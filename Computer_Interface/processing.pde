@@ -2,13 +2,17 @@ import processing.serial.*;
 import java.util.Arrays;
 Serial p;
 
+final int FIRST_PIN = 2;
+final int LAST_PIN = 13;
+final int numPins = LAST_PIN-FIRST_PIN;
+
 ////////////////////////////////////////////////
 /*--------------------SETUP-------------------*/
 
 //uncomment the line where your arduino/STM32 is connected
-//String LA_port = "/dev/ttyACM0";    //linux DFU
+String LA_port = "/dev/ttyACM1";    //linux DFU
 //String LA_port = "/dev/ttyUSB0";  //linux Serial
-String LA_port = "COM10";          //windows
+//String LA_port = "COM10";          //windows
 
 final int baudrate = 115200; //check if it is the same in arduino
 
@@ -36,7 +40,7 @@ float xShift;
 int xEdge = 60;
 int yEdge = 30;
 int xEnd;
-float[] xPos = {0, 0, 0, 0, 0, 0};
+float[] xPos = new float[numPins];
 int yBottom;
 int yDiff;
 int yPos = yEdge;
@@ -54,7 +58,7 @@ boolean first = false;
 boolean dataComplete = false;
 //following data
 boolean [][] state;
-boolean [] isLow = new boolean[6];
+boolean [] isLow = new boolean[numPins];
 float[] usTime;
 float[] xTime;
 int[] pinChanged;
@@ -91,7 +95,8 @@ void setup () {
   p = new Serial(this, LA_port, baudrate);
   p.bufferUntil('\n');
 
-  size(1000, 460);
+  //size(1000, 460);
+  size(2500, 920);
   background(black);
   smooth(4);
 
@@ -122,7 +127,7 @@ void draw () {
     translate(xEdge, 0);
     for (int i=0; i<samples; i++) {
       yPos = yEdge;                      //start a new cicle
-      for (int n=0; n<6; n++) {
+      for (int n=0; n<numPins; n++) {
         if (state[i][n]==true) {
           ySave = yPos;                  //save y value
           if (isLow[n]==true) {          //pin high else low
@@ -164,7 +169,7 @@ void draw () {
     }
 
     yPos = yEdge;
-    for (int n = 0; n < 6; n++) {
+    for (int n = 0; n < numPins; n++) {
       if (xPos[n]!=0) {    //draw only the pin which are active
         if (isLow[n]==true) line(xPos[n]+xShift, yPos+30, xEnd+xShift, yPos+30);
         else                line(xPos[n]+xShift, yPos, xEnd+xShift, yPos);
@@ -205,10 +210,24 @@ void drawText() {
     }
   } else {
 
-    for (byte i = 8; i<=13; i++) {
+    for (byte i = FIRST_PIN; i<=LAST_PIN; i++) {
       line(x, y-20, xEdge, y-20);
       line(x, y+10, xEdge, y+10);
       text ("Pin "+i, x, y);
+      //switch (i) {
+      //  case 8:
+      //    text ("SRCLR ", x, y);
+      //    break;
+      //  case 9:
+      //    text ("OE ", x, y);
+      //    break;
+      //  case 10:
+      //    text ("SER ", x, y);
+      //    break;
+      //  case 11:
+      //    text ("SRCLK ", x, y);
+      //    break;
+      //  }
       y+=60;
     }
   }
@@ -366,7 +385,7 @@ void serialEvent (Serial p) {
       pinChanged = new int[samples];
       usTime = new float[samples];
       xTime = new float[samples];
-      state = new boolean[samples][6];
+      state = new boolean[samples][numPins];
 
       first = false;
     } else {
@@ -393,7 +412,7 @@ void getData () {
   //println("time"+usTime[0]);
   printArray(usTime);
   printArray(xTime);
-  //println("pin: "+binary(changed[0], 6));
+  //println("pin: "+binary(changed[0], numPins));
 
   for (int i = 0; i < samples; i++) {
     xTime[i] = usTime[i] / reducer;    //better to reduce the lenght of the x
@@ -403,7 +422,7 @@ void getData () {
   int mask = 1;
 
   // initial state
-  for (int n=0; n<6; n++) {
+  for (int n=0; n<numPins; n++) {
     b = initialState & mask;
     isLow[n] = !boolean (b);
     mask <<= 1;
@@ -414,8 +433,8 @@ void getData () {
   for (int i=0; i<samples; i++) {
     mask = 1;
     //println("i:"+i);
-    //println(binary(changed[i], 6));
-    for (int n=0; n<6; n++) {
+    //println(binary(changed[i], numPins));
+    for (int n=0; n<numPins; n++) {
       b= pinChanged[i] & mask;
       state[i][n]= boolean (b);
       mask <<= 1;

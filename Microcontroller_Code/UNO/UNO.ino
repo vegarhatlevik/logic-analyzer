@@ -16,8 +16,8 @@
 #define prescaler 0x02
 volatile uint16_t timer1_overflow_count;
 
-uint8_t initial, state, old_state;
-uint8_t pinChanged[samples];
+uint16_t initial, state, old_state;
+uint16_t pinChanged[samples];
 uint32_t timer[samples];
 uint16_t event = 0;
 
@@ -26,7 +26,9 @@ void init_board() {
   PORTC = (0 << 0); DDRC |= (1 << 0); // led A0
   DDRB |= 0x00;     // pin 8-13 input
   PORTB |= 0x3F;    // pull-up
-  
+  for (int i=2; i<8; i++) {
+    pinMode(i,INPUT_PULLUP);
+  }
 }
 
 void init_timer() {
@@ -69,6 +71,12 @@ uint32_t myMicros () {
   return total_time;
 }
 
+uint16_t readPins() {
+  uint16_t rval = (PINB << 6);
+  rval |= PIND >> 2;
+  return rval;
+}
+
 void start() {
   _delay_ms(1000);
 
@@ -76,7 +84,7 @@ void start() {
   event = 0;
 
   PORTC = (1 << 0);
-  initial = PINB;
+  initial = readPins();
   state = initial;
 
 }
@@ -109,18 +117,18 @@ int main(void) {
   while (1) {
     
     old_state = state;
-    state = PINB;
+    state = readPins();
   
-  if (old_state != state) {
-    timer[event] = myMicros();
-    pinChanged[event] = state ^ old_state;
-    event++;
+    if (old_state != state) {
+      timer[event] = myMicros();
+      pinChanged[event] = state ^ old_state;
+      event++;
 
-    if (event == samples) {
-      sendData();
-      while (Serial.read() != 'G') ;  //wait for the "go"
-      start();
-    }
+      if (event == samples) {
+        sendData();
+        while (Serial.read() != 'G') ;  //wait for the "go"
+        start();
+      }
     }
   }
 }
